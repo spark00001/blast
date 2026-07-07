@@ -49,7 +49,19 @@ class knHttp {
                 return;
         }
     }
-    // ==========================================
+        function set_cookies($cookies){
+        $this->cookies = $cookies;
+    }
+    function set_post($post){
+        $this->http_post=$post;
+    }
+    function set_get($getArray){
+        $get=Array();
+        foreach($getArray as $key=>$value){
+            $get[]=urlencode($key) . '=' . urlencode($value);
+        }
+        $this->http_get = implode('&',$get); 
+    }
 
     function set_request_headers($header = array()) {
         if (is_array($header) && count($header) >= 2) {
