@@ -6,8 +6,8 @@ WORKDIR /var/www/html
 # Copy all your KnProxy repository codebase files into the container
 COPY . .
 
-# Inform Docker that the application expects to use a variable port
-EXPOSE ${PORT}
+# Explicitly expose port 8080 as a fallback reference marker
+EXPOSE 8080
 
-# Use Shell Form to allow runtime environment variable expansion
-CMD php -S 0.0.0.0:${PORT:-9000}
+# Explicitly invoke an executable shell to properly pass the Railway dynamic $PORT
+CMD ["/bin/sh", "-c", "php -S 0.0.0.0:${PORT}"]
