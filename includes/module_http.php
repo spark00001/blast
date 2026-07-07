@@ -126,18 +126,58 @@ class knHttp {
     }
 
     function refined_headers() {
+    function refined_headers(){
         $headers = explode("\n", preg_replace('~\r~', '', $this->headers));
         $head = array();
-        foreach ($headers as $line) {
+        foreach($headers as $line){
             if (empty($line)) continue;
+            
+            // Correctly parse modern HTTP/2 and older HTTP/1.x status lines
+            if(preg_match('~^http/(\d+\.?\d*)\s+(\d+)~iUs', $line, $matches)){
+                $head['HTTP_RESPONSE'] = (int)$matches[2];
+                continue;
+            }
+            
             $pair = explode(':', $line, 2);
+            if (count($pair) < 2) continue;
+            
             $key = strtoupper(trim($pair[0]));
-            if ($key == 'CONTENT-TYPE') {
-                $this->doctype = trim($pair[1]);
-                $head["CONTENT_TYPE"] = trim($pair[1]);
+            $val = trim($pair[1]);
+            
+            switch($key){
+                case 'LOCATION':
+                    $head['HTTP_LOCATION'] = $val;
+                    break;
+                case 'SET-COOKIE':
+                    $cookie = explode(';', $val);
+                    if(is_array($cookie) && count($cookie)>1)
+                        $cookie[1] = preg_replace('~expires\s*=\s*~iUs', '', $cookie[1]);
+                    else
+                        $cookie[1] = '';
+                    $cookie_ = explode('=', trim($cookie[0]), 2);
+                    $head['HTTP_COOKIES'][] = array($cookie_[0], isset($cookie_[1]) ? $cookie_[1] : '', $cookie[1]);
+                    break;
+                case 'CONTENT-DISPOSITION':
+                    $head['CONTENT_DISPOSITION'] = $val;
+                    break;
+                case 'CONTENT-TYPE':
+                    $this->doctype = $val;
+                    $head["CONTENT_TYPE"] = $val;
+                    break;
+                case 'CACHE-CONTROL':
+                    $head['CACHE_CONTROL'] = $val;
+                    break;
+                case 'EXPIRES':
+                    $head['EXPIRES'] = $val;
+                    break;
+                case 'ETAG':
+                    $head['ETAG'] = $val;
+                    break;
+                case 'LAST-MODIFIED':
+                    $head['LAST_MODIFIED'] = $val;
+                    break;
             }
         }
         return $head;
     }
-}
 ?>
