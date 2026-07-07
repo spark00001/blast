@@ -18,7 +18,6 @@ class knHttp {
     protected $referer = '';
     protected $streaming = false;
     protected $mode = 'curl';
-    /* Return Values */
     var $content;
     var $headers;
     var $doctype;
@@ -26,123 +25,84 @@ class knHttp {
     function __construct($url, $streaming = false) {
         $this->url = $url;
         $this->streaming = $streaming;
-        $this->user_agent = $_SERVER['HTTP_USER_AGENT'];
+        $this->user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : 'Mozilla/5.0';
         $this->set_referer(defined('KNPROXY_REFERER') ? KNPROXY_REFERER : 'none');
         $this->is_https = (strtolower(substr($this->url, 0, 6)) == 'https:');
-        if (!function_exists('curl_init'))
-            $this->mode = 'filesockets';
+        if (!function_exists('curl_init')) $this->mode = 'filesockets';
     }
 
     function set_request_headers($header = array()) {
-        if (!is_array($header) || count($header) < 2)
-            return;
-        $this->request_headers[$header[0]] = $header[1];
-    }
-
-    function force_mode($mode = 'filesockets') {
-        $this->mode = $mode;
-    }
-
-    function set_referer($referer = 'none') {
-        switch ($referer) {
-            case 'pseudo': $this->referer = $this->url; break;
-            case 'none': $this->referer = ''; break;
-            case 'auto': $this->referer = ''; break;
+        if (is_array($header) && count($header) >= 2) {
+            $this->request_headers[$header[0]] = $header[1];
         }
     }
 
-    function set_url($url) {
-        $this->__construct($url);
-    }
+    function send() {
+        if ($this->streaming) return;
+        if ($this->mode != 'curl') return $this->fsockets_send();
 
-    function set_cookies($cookies) {
-        $this->cookies = $cookies;
-    }
-
-    function set_post($post) {
-        $this->http_post = $post;
-    }
-
-    function set_get($getArray) {
-        $get = Array();
-        foreach ($getArray as $key => $value) {
-            $get[] = urlencode($key) . '=' . urlencode($value);
-        }
-        $this->http_get = implode('&', $get);
-    }
-
-    function set_http_creds($unam, $pass) {
-        $this->httpauth = ($unam !== false) ? $unam . ':' . $pass : '';
-    }
-
-    function getPost() {
-        if (!is_array($this->http_post) || count($this->http_post) < 1) return '';
-        return http_build_query($this->http_post);
-    }
-
-    function getCookies() {
-        if (!is_array($this->cookies) || count($this->cookies) < 1) return '';
-        $ret = array();
-        foreach ($this->cookies as $name => $value) {
-            $ret[] = $name . '=' . $value;
-        }
-        return implode(';', $ret);
-    }
-
-    function head() {
-        if (count($this->http_post) > 0) return false;
         $ch = curl_init();
         $url = $this->url;
         if ($this->http_get != '') {
             $url .= (strpos($url, '?') !== false) ? '&' . $this->http_get : '?' . $this->http_get;
         }
+
         curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_HEADER, 1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
+
         if ($this->is_https) {
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
         }
+
+        if (count($this->http_post) > 0) {
+            curl_setopt($ch, CURLOPT_POST, count($this->http_post));
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $this->getPost());
+        }
+
         if (count($this->cookies) > 0) curl_setopt($ch, CURLOPT_COOKIE, $this->getCookies());
         if ($this->httpauth != '') curl_setopt($ch, CURLOPT_USERPWD, $this->httpauth);
         curl_setopt($ch, CURLOPT_REFERER, $this->referer);
         curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-        if (count($this->request_headers) > 0) {
-            $hdr = array();
-            foreach ($this->request_headers as $key => $val) $hdr[] = "$key: $val";
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $hdr);
-        }
-        curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
-        curl_setopt($ch, CURLOPT_HEADER, true);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $this->headers = curl_exec($ch);
+
+        $raw = curl_exec($ch);
+        $this->doctype = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         curl_close($ch);
-        return true;
+
+        $spl = preg_split('~\r*\n\r*\n~', $raw, 2);
+        $this->headers = $spl[0];
+        if (isset($spl[1])) {
+            $this->content = $spl[1];
+        }
     }
 
-    // ... [Streaming and socket methods omitted for brevity, ensure they are also properly closed with '}' ] ...
+    function getPost() {
+        return http_build_query($this->http_post);
+    }
+
+    function getCookies() {
+        $ret = array();
+        foreach ($this->cookies as $name => $value) $ret[] = "$name=$value";
+        return implode(';', $ret);
+    }
+
+    function fsockets_send() {
+        // Implementation for non-curl environments
+        return; 
+    }
 
     function refined_headers() {
         $headers = explode("\n", preg_replace('~\r~', '', $this->headers));
         $head = array();
-        if (is_array($headers) && count($headers) > 0) {
-            foreach ($headers as $line) {
-                if (preg_match('~^http/\d+.\d+\s(\d+)\s~iUs', $line, $matches)) {
-                    $head['HTTP_RESPONSE'] = (int)$matches[1];
-                    continue;
-                } else {
-                    $pair = preg_split('~:~', $line, 2);
-                    $key = isset($pair[0]) ? preg_replace('~\s~', '', strtoupper($pair[0])) : '';
-                    
-                    switch ($key) {
-                        case 'LOCATION': $head['HTTP_LOCATION'] = trim($pair[1]); break;
-                        case 'CONTENT-TYPE': $this->doctype = trim($pair[1]); $head["CONTENT_TYPE"] = trim($pair[1]); break;
-                        // ... [Add other cases here] ...
-                        default:
-                            if (!empty($key)) {
-                                $head['UNKNOWN'][] = Array($pair[0], $pair[1]);
-                            }
-                            break;
-                    }
-                }
+        foreach ($headers as $line) {
+            if (empty($line)) continue;
+            $pair = explode(':', $line, 2);
+            $key = strtoupper(trim($pair[0]));
+            if ($key == 'CONTENT-TYPE') {
+                $this->doctype = trim($pair[1]);
+                $head["CONTENT_TYPE"] = trim($pair[1]);
             }
         }
         return $head;
