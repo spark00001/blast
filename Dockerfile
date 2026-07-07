@@ -10,4 +10,4 @@ COPY . .
 EXPOSE ${PORT}
 
 # Use Shell Form to allow runtime environment variable expansion
-CMD php -S 0.0.0.0:${PORT:-8080}
+CMD php -S 0.0.0.0:${PORT:-9000}
