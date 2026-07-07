@@ -2,18 +2,20 @@ import http from 'http';
 import https from 'https';
 
 export default async function handler(req, res) {
-  // Extract the target URL from the query string (e.g., /api/proxy?url=https://example.com)
-  const targetUrlString = req.query.url;
+  const targetUrlString = req.query.url; //
 
   if (!targetUrlString) {
-    return res.status(400).json({ error: 'Missing "url" query parameter.' });
+    return res.status(400).json({ error: 'Missing "url" query parameter.' }); //
   }
 
   try {
     const targetUrl = new URL(targetUrlString);
-    
-    // Choose the correct module based on the target protocol
     const transport = targetUrl.protocol === 'https:' ? https : http;
+
+    // Filter headers to avoid sending broken metadata
+    const filteredHeaders = { ...req.headers };
+    delete filteredHeaders.host;
+    delete filteredHeaders.connection;
 
     const options = {
       hostname: targetUrl.hostname,
@@ -21,28 +23,30 @@ export default async function handler(req, res) {
       path: targetUrl.pathname + targetUrl.search,
       method: req.method,
       headers: {
-        ...req.headers,
-        // Host header must match the target destination server
-        host: targetUrl.hostname, 
+        ...filteredHeaders,
+        host: targetUrl.hostname, // Must point to target
       },
     };
 
-    // Forward the request to the target destination
     const targetRequest = transport.request(options, (targetResponse) => {
-      // Pass along the destination status code and headers
+      // Pass headers and status directly back to the client
       res.writeHead(targetResponse.statusCode, targetResponse.headers);
-      
-      // Stream the response body data directly back to the client
       targetResponse.pipe(res, { end: true });
     });
 
-    // Handle connection errors
     targetRequest.on('error', (err) => {
-      res.status(502).json({ error: 'Bad Gateway', details: err.message });
+      if (!res.writableEnded) {
+        res.status(502).json({ error: 'Bad Gateway', details: err.message });
+      }
     });
 
-    // Pipe any incoming request body (like POST data) to the destination
-    req.pipe(targetRequest, { end: true });
+    // FIX: Safely pass the request body text/json instead of raw streaming req
+    if (req.body) {
+      const bodyData = typeof req.body === 'object' ? JSON.stringify(req.body) : req.body;
+      targetRequest.write(bodyData);
+    }
+
+    targetRequest.end();
 
   } catch (error) {
     return res.status(400).json({ error: 'Invalid URL format provided.' });
