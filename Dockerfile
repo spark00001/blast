@@ -6,8 +6,8 @@ WORKDIR /var/www/html
 # Copy all your KnProxy repository codebase files into the container
 COPY . .
 
-# Expose standard web traffic port
-EXPOSE 80
+# Inform Docker that the application expects to use a variable port
+EXPOSE ${PORT}
 
-# Start PHP's built-in, lightweight web server on port 80
-CMD ["php", "-S", "0.0.0.0:80"]
+# Use Shell Form to allow runtime environment variable expansion
+CMD php -S 0.0.0.0:${PORT:-8080}
