@@ -1,9 +1,9 @@
 FROM php:8.2-fpm-alpine
 
-# Install Nginx to handle public web traffic
+# 1. Install Nginx to serve pages
 RUN apk add --no-cache nginx
 
-# Copy custom Nginx routing rules directly into the container
+# 2. Copy the custom Nginx server routing configurations directly
 RUN printf '%s\n' \
     'server {' \
     '    listen 80;' \
@@ -20,11 +20,17 @@ RUN printf '%s\n' \
     '    }' \
     '}' > /etc/nginx/http.d/default.conf
 
-# Copy all your KnProxy code repository files into the server directory
+# 3. Copy all your KnProxy repository code files into the container webroot
 COPY . /var/www/html/
 
-# Expose standard web traffic port
+# 4. Create an internal background starter script to boot both engines safely
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    'php-fpm -D' \
+    'exec nginx -g "daemon off;"' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+# 5. Expose standard web traffic port
 EXPOSE 80
 
-# Start both PHP backend and Nginx web server simultaneously 
-CMD sh -c "php-fpm -D && nginx -g 'daemon off;'"
+# 6. Execute our new background starter script on boot
+ENTRYPOINT ["/entrypoint.sh"]
