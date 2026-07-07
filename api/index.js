@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const TARGET_URL = 'https://example.com'; // Change this to your target site
+  const TARGET_URL = 'https://spark00001.github.io/spark/blast.html'; // Change this to your target site
   
   // Reconstruct the target path
   const targetPath = req.url === '/' ? '' : req.url;
