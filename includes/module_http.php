@@ -124,8 +124,6 @@ class knHttp {
         // Implementation for non-curl environments
         return; 
     }
-
-    function refined_headers() {
     function refined_headers(){
         $headers = explode("\n", preg_replace('~\r~', '', $this->headers));
         $head = array();
