@@ -1,6 +1,10 @@
 {
-  "version": 2,
-  "rewrites": [
-    { "source": "/api/proxy", "destination": "/api/index.js" }
+  "functions": {
+    "api/*.php": {
+      "runtime": "vercel-php@0.9.0"
+    }
+  },
+  "routes": [
+    { "src": "/(.*)", "dest": "/api/index.php" }
   ]
 }
