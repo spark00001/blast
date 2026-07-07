@@ -27,4 +27,4 @@ COPY . /var/www/html/
 EXPOSE 80
 
 # Start both PHP backend and Nginx web server simultaneously 
-CMD php-fpm -D && nginx -g "daemon off;"
+CMD sh -c "php-fpm -D && nginx -g 'daemon off;'"
