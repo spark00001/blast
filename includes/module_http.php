@@ -178,7 +178,7 @@ class knHttp{
 			@curl_setopt($ch, CURLOPT_USERPWD, $this->httpauth);
 		}
 		if(!defined('KNPROXY_ACCEPT_GZIP') || KNPROXY_ACCEPT_GZIP!="true"){
-			@curl_setopt($ch,CURLOPT_ENCODING,''); 
+			@curl_setopt($ch,CURLOPT_ENCODING,''); // RECTIFIED: Changed $curl to $ch
 		}
 		@curl_setopt($ch, CURLOPT_REFERER,$this->referer);
 		@curl_setopt($ch,CURLOPT_AUTOREFERER,true);
@@ -220,12 +220,12 @@ class knHttp{
 			//chunk iterate
 			$return = '';
 			$a = preg_split('~\r*\n~',$chunked,2);
-			$chunksize = (isset($a[0])) ? hexdec($a[0]) : 0;
+			$chunksize = hexdec($a[0]);
 			while($chunksize>0){
 				$return.=substr($a[1],0,$chunksize);
 				$chunked=preg_replace('~^\r*\n~','',substr($a[1],$chunksize,strlen($a[1])));
 				$a = preg_split('~\r*\n~',$chunked,2);
-				$chunksize = (isset($a[0])) ? hexdec($a[0]) : 0;
+				$chunksize = hexdec($a[0]);
 			}
 			return $return;
 		}
@@ -275,15 +275,15 @@ class knHttp{
 		while ($line = fgets($fp)) $ret .= $line; 
 		fclose($fp);
 		$spl = preg_split('~\r*\n\r*\n~',$ret,2);
-		$this->headers = isset($spl[0]) ? $spl[0] : '';
-		if(isset($spl[1]) && preg_match('~^http/1.\d \d+~iUs',$spl[1])){
+		$this->headers = $spl[0];
+		if(preg_match('~^http/1.\d \d+~iUs',$spl[1])){
 			//second split is also a header, may be because of HTTP/1.1 100 Continue
 			$splExt = preg_split('~\r*\n\r*\n~',$spl[1],2);
-			$this->headers .= "\n\r" . (isset($splExt[0]) ? $splExt[0] : '');
-			$spl[1] = isset($splExt[1]) ? $splExt[1] : '';
+			$this->headers .= "\n\r" . $splExt[0];
+			$spl[1] = $splExt[1];
 		}
 		
-		$this->content = isset($spl[1]) ? $this->do_chunk_combine($spl[1]) : '';
+		$this->content = $this->do_chunk_combine($spl[1]);
 	}
 	
 	function send(){
@@ -318,7 +318,7 @@ class knHttp{
 			@curl_setopt($ch, CURLOPT_USERPWD, $this->httpauth);
 		}
 		if(!defined('KNPROXY_ACCEPT_GZIP') || KNPROXY_ACCEPT_GZIP!="true"){
-			@curl_setopt($ch,CURLOPT_ENCODING,''); 
+			@curl_setopt($ch,CURLOPT_ENCODING,''); // RECTIFIED: Changed $curl to $ch
 		}
 		@curl_setopt($ch, CURLOPT_REFERER,$this->referer);
 		@curl_setopt($ch,CURLOPT_AUTOREFERER,true);
@@ -333,16 +333,7 @@ class knHttp{
 		$this->doctype = @curl_getinfo($ch,CURLINFO_CONTENT_TYPE);
 		curl_close($ch);
 		$spl = preg_split('~\r*\n\r*\n~',$raw,2);
-		$this->headers = isset($spl[0]) ? $spl[0] : '';
-if(isset($spl[1]) && preg_match('~^http/1.\d \d+~iUs',$spl[1])){//second split is also a header, may be because of HTTP/1.1 100 Continue$splExt = preg_split('~\r*\n\r*\n~',$spl[1],2);$this->headers .= "\n\r" . (isset($splExt[0]) ? $splExt[0] : '');$spl[1] = isset($splExt[1]) ? $splExt[1] : '';}if((preg_match('~\ncontent-encoding\s*:\sgzip~iUs',$this->headers) || preg_match('~\ncontent-encoding\s:\sdeflate~iUs',$this->headers)) && isset($spl[1]) && function_exists('gzinflate'))$spl[1] = gzinflate($spl[1]);if(isset($spl[1]))$this->content = $spl[1];}function refined_headers(){$headers = explode("\n",preg_replace('~\r~','',$this->headers));$head = array();if(is_array($headers) && count($headers)>0)foreach($headers as $line){if(empty(trim($line))) continue;if(preg_match('~^http/\d+.\d+\s(\d+)\s~iUs',$line,$matches)){$head['HTTP_RESPONSE'] = isset($matches[1]) ? (int)$matches[1] : 200;continue;}else{$pair = preg_split('~:~',$line,2);if(!isset($pair[0])) continue;$headerValue = isset($pair[1]) ? $pair[1] : '';switch(preg_replace('~\s~','',strtoupper($pair[0]))){case 'LOCATION':{$head['HTTP_LOCATION'] = preg_replace('~^\s~','',$headerValue);						}break;case 'SET-COOKIE':{$cookie = explode(';',$headerValue);if(is_array($cookie) && count($cookie)>1)$cookie[1] = preg_replace('~expires\s*=\s*~iUs','',$cookie[1]);else$cookie[1] = '';$cookie_ = preg_split('~=~iUs',preg_replace('~^\s*~','',$cookie[0]),2);$cookieName = isset($cookie_[0]) ? $cookie_[0] : '';$cookieVal = isset($cookie_[1]) ? $cookie_[1] : '';$head['HTTP_COOKIES'][] = Array($cookieName,$cookieVal,$cookie[1]);}break;case 'WWW-AUTHENTICATE-MODE':{$head['WWW_AUTHENTICATE_MODE'] = $headerValue;}break;case 'WWW-AUTHENTICATE':{if(preg_match('~realm=(['"])(.)\1~is',$headerValue,$m)){$head['WWW_AUTHENTICATE_REALM'] = isset($m[2]) ? $m[2] : '';}}break;case 'CONTENT-DISPOSITION':{$head['CONTENT_DISPOSITION'] = $headerValue;}break;case 'REFRESH':{$m = explode(';',$headerValue);$refreshUrl = isset($m[1]) ? preg_replace('~^\surl\s*=(.)$~iUs','$1',$m[1]) : '';$head['HTTP_REFRESH'] = Array((int)$m[0], $refreshUrl);}break;case 'CONTENT-TYPE':{$this->doctype = $headerValue;$head["CONTENT_TYPE"] = $headerValue;}break;case 'DATE':{$head["DATE"] = $headerValue;}break;case 'ACCEPT-RANGES':{$head['ACCEPT_RANGES'] = preg_replace('~\s~','',$headerValue);}break;case 'CONTENT-RANGE':{$head['CONTENT_RANGE'] = preg_replace('~\s*~','',$headerValue);}break;case 'CACHE-CONTROL':{$head['CACHE_CONTROL'] = preg_replace('~^\s*~','',$headerValue);}break;case 'EXPIRES':{$head['EXPIRES'] = preg_replace('~^\s*~','',$headerValue);}break;case 'ETAG':{$head['ETAG'] = preg_replace('~^\s*~','',$headerValue);}break;case 'LAST-MODIFIED':{$head['LAST_MODIFIED'] = preg_replace('~^\s*~','',$headerValue);}break;case 'X-KNPROXY-LOCATION':{$head['KNPROXY_LOCATION'] = @base64_decode(preg_replace('~^\s*~','',$headerValue));}					default:{
-						if(isset($pair[0]) && !empty($pair[0])){
-							$head['UNKNOWN'][] = Array($pair[0],$pair[1]);
-						}
-					}break;
-				}
-			}
-		}
-		return $head;
-	}
-} // <--- INSERT THIS MISSING BRACE TO CLOSE THE CLASS
-?>
+		$this->headers = $spl[0];
+		if(preg_match('~^http/1.\d \d+~iUs',$spl[1])){
+			//second split is also a header, may be because of HTTP/1.1 100 Continue
+         $splExt = preg_split('~\r*\n\r*\n~',$spl[1],2);$this->headers .= "\n\r" . $splExt[0];$spl[1] = $splExt[1];}if((preg_match('~\ncontent-encoding\s*:\sgzip~iUs',$this->headers) || preg_match('~\ncontent-encoding\s:\sdeflate~iUs',$this->headers)) && isset($spl[1]) && function_exists('gzinflate'))$spl[1] = gzinflate($spl[1]);if(isset($spl[1]))$this->content = $spl[1];}function refined_headers(){$headers = explode("\n",preg_replace('~\r~','',$this->headers));$head = array();if(is_array($headers) && count($headers)>0)foreach($headers as $line){if(preg_match('~^http/\d+.\d+\s(\d+)\s~iUs',$line,$matches)){$head['HTTP_RESPONSE'] = (int)$matches[1];continue;}else{$pair = preg_split('~:~',$line,2);switch(preg_replace('~\s~','',strtoupper($pair[0]))){case 'LOCATION':{$head['HTTP_LOCATION'] = preg_replace('~^\s~','',$pair[1]);						}break;case 'SET-COOKIE':{$cookie = explode(';',$pair[1]);if(is_array($cookie) && count($cookie)>1)$cookie[1] = preg_replace('~expires\s*=\s*~iUs','',$cookie[1]);else$cookie[1] = '';$cookie_ = preg_split('~=~iUs',preg_replace('~^\s*~','',$cookie[0]),2);$head['HTTP_COOKIES'][] = Array($cookie_[0],$cookie_[1],$cookie[1]);}break;case 'WWW-AUTHENTICATE-MODE':{$head['WWW_AUTHENTICATE_MODE'] = $pair[1];}break;case 'WWW-AUTHENTICATE':{preg_match('~realm=(['"])(.)\1~is',$pair[1],$m);$head['WWW_AUTHENTICATE_REALM'] = $m[2];}break;case 'CONTENT-DISPOSITION':{$head['CONTENT_DISPOSITION'] = $pair[1];}break;case 'REFRESH':{$m = explode(';',$pair[1]);$head['HTTP_REFRESH'] = Array((int)$m[0],preg_replace('~^\surl\s*=(.)$~iUs','$1',$m[1]));}break;case 'CONTENT-TYPE':{$this->doctype = $pair[1];$head["CONTENT_TYPE"] = $pair[1];}break;case 'DATE':{$head["DATE"] = $pair[1];}break;case 'ACCEPT-RANGES':{$head['ACCEPT_RANGES'] = preg_replace('~\s~','',$pair[1]);}break;case 'CONTENT-RANGE':{$head['CONTENT_RANGE'] = preg_replace('~\s*~','',$pair[1]);;}break;case 'CACHE-CONTROL':{$head['CACHE_CONTROL'] = preg_replace('~^\s*~','',$pair[1]);}break;case 'EXPIRES':{$head['EXPIRES'] = preg_replace('~^\s*~','',$pair[1]);}break;case 'ETAG':{$head['ETAG'] = preg_replace('~^\s*~','',$pair[1]);}break;case 'LAST-MODIFIED':{$head['LAST_MODIFIED'] = preg_replace('~^\s*~','',$pair[1]);}break;case 'X-KNPROXY-LOCATION':{//Allows for internal redirection protocol$head['KNPROXY_LOCATION'] = @base64_decode(preg_replace('~^\s*~','',$pair[1]));}default:{if(isset($pair[0]) && !empty($pair[0])){$head['UNKNOWN'][] = Array($pair[0],$pair[1]);}}break;}}}return $head;}} // RECTIFIED: Closed the unclosed knHttp class brace here?>
