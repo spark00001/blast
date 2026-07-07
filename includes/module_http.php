@@ -31,6 +31,26 @@ class knHttp {
         if (!function_exists('curl_init')) $this->mode = 'filesockets';
     }
 
+    // ==========================================
+    // ADD THIS MISSING METHOD TO FIX THE CRASH:
+    // ==========================================
+    public function set_referer($referer = 'none') {
+        switch($referer){
+            case 'pseudo':
+                $this->referer = $this->url;
+                break;
+            case 'none':
+                $this->referer = '';
+                break;
+            case 'auto':
+                $this->referer = '';
+                break;
+            default:
+                return;
+        }
+    }
+    // ==========================================
+
     function set_request_headers($header = array()) {
         if (is_array($header) && count($header) >= 2) {
             $this->request_headers[$header[0]] = $header[1];
