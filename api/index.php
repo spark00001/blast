@@ -1,3 +1,3 @@
 <?php
-echo "hii hello, how are you";
+echo "<a href='/car/car.png'></a>;
 ?>
