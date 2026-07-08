@@ -1,3 +1,3 @@
 <?php
-echo "<a href='/blast/car/car.png'>car</a>";
+echo "<a href='car/car.png'>car</a>";
 ?>
