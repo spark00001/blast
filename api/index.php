@@ -1,3 +1,3 @@
 <?php
-echo "<img src='/api/car/car.png'>";
+echo "<img src='/car/car.png'>";
 ?>
