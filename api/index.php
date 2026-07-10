@@ -1,3 +1,3 @@
 <?php
-echo "<img src='/car.png'>";
+echo "<img src='spark00001/blast/car/car.png'>";
 ?>
