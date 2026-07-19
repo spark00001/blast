@@ -1,3 +1,5 @@
 <?php
-echo "<img src='/car/car.png'>";
 ?>
+<html>
+<img src='/car/car.png'>
+</html>
