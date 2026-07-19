@@ -11,7 +11,7 @@
     },
     {
       "src": "/car/(.*)",
-      "dest": "/public/car/$1"
+      "dest": "/public/car/car.png"
     }
   ]
 }
