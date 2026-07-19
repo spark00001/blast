@@ -1,5 +1,5 @@
 <?php
 ?>
 <html>
-<img src='/car/car.png'>
+<img src='/public/car/car.png'>
 </html>
