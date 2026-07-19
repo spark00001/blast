@@ -9,5 +9,9 @@
       "src": "/(.*)",
       "dest": "/api/index.php"
     }
+    {
+      "src": "/car/(.*)",
+      "dest": "/car/car.png"
+    }
   ]
 }
